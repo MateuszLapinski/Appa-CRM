@@ -1,0 +1,139 @@
+CREATE DATABASE IF NOT EXISTS CRM_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE CRM_DB;
+
+CREATE TABLE Roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE Users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    role_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (role_id) REFERENCES Roles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE LoginHistory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(50),
+    status ENUM('success', 'failed') NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(20),
+    address VARCHAR(255),
+    city VARCHAR(100),
+    industry VARCHAR(100),
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Leads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(20),
+    company VARCHAR(100),
+    source VARCHAR(50),
+    status ENUM('new', 'contacted', 'converted', 'closed') NOT NULL DEFAULT 'new',
+    assigned_to INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (assigned_to) REFERENCES Users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE Products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    vat DECIMAL(5,2) NOT NULL DEFAULT 23.00
+);
+
+CREATE TABLE Offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    user_id INT NOT NULL,
+    total_amount DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending',
+    FOREIGN KEY (customer_id) REFERENCES Customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE OfferItems (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    offer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2),
+    FOREIGN KEY (offer_id) REFERENCES Offers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Invoices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    total_amount DECIMAL(10,2),
+    vat_amount DECIMAL(10,2),
+    invoice_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    due_date TIMESTAMP NOT NULL,
+    status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',
+    FOREIGN KEY (customer_id) REFERENCES Customers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE InvoiceItems (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2),
+    FOREIGN KEY (invoice_id) REFERENCES Invoices(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES Products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    method ENUM('card', 'bank transfer', 'cash') NOT NULL,
+    FOREIGN KEY (invoice_id) REFERENCES Invoices(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Tickets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    assigned_to INT,
+    issue_description TEXT NOT NULL,
+    status ENUM('open', 'in_progress', 'closed') NOT NULL DEFAULT 'open',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES Customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_to) REFERENCES Users(id) ON DELETE SET NULL
+);
+
+
+CREATE TABLE Interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    user_id INT NOT NULL,
+    type ENUM('call', 'email', 'meeting', 'note') NOT NULL,
+    notes TEXT,
+    interaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES Customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_customers_email ON Customers(email);
+CREATE INDEX idx_tickets_status ON Tickets(status);
+CREATE INDEX idx_invoices_status ON Invoices(status);
+CREATE INDEX idx_payments_method ON Payments(method);
